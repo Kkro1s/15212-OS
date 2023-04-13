@@ -27,30 +27,34 @@ class CyclicCache(AbstractCache):
     def name(self):
         return "Cyclic"
 
-    # TODO: Edit the code below to provide an implementation of a cache that
-    # uses a cyclic caching strategy with the given cache size. You
-    # can use additional methods and variables as you see fit as long
-    # as you provide a suitable overridding of the lookup method.
-    # Make sure that you increment cache_hit_count when appropriate!
-    
     def __init__(self, data, size=5):
-        super().__init__(data,size)
-        #cache as a array
-        self.cache = []*size
+        super().__init__(data, size)
+        self.cache = {}
+        self.cache_keys = [None] * size
         self.cache_pointer = 0
 
-    def lookup(self, nextValue):
-        #case in cache
-        if nextValue in self.cache:
+    def lookup(self, address):
+        # case in cache
+        if address in self.cache:
             self.cache_hit_count += 1
-            return True
+            return self.cache[address]
 
-        #case not
-        self.cache[self.cache_pointer] = nextValue
-        #update pointer(incase size of cache changes)
-        self.cache_pointer = (self.cache_pointer + 1) % len(self.cache)
-        return False
+        # case not in cache
+        value = super().lookup(address)
+        # remove old key from cache if necessary
+        old_key = self.cache_keys[self.cache_pointer]
+        if old_key is not None:
+            del self.cache[old_key]
+        
+        # update cache with new value
+        self.cache[address] = value
+        self.cache_keys[self.cache_pointer] = address
+        
+        # update pointer (in case size of cache changes)
+        self.cache_pointer = (self.cache_pointer + 1) % len(self.cache_keys)
 
+        return value
+  
         
     
 
@@ -58,53 +62,69 @@ class LRUCache(AbstractCache):
     def name(self):
         return "LRU"
 
-    # TODO: Edit the code below to provide an implementation of a cache that
-    # uses a least recently used caching strategy with the given cache size.
-    # You can use additional methods and variables as you see fit as
-    # long as you provide a suitable overridding of the lookup method.
-    # Make sure that you increment cache_hit_count when appropriate!
-    
     def __init__(self, data, size=5):
-        super().__init__(data)
-        #create deque as a cache
-        self.cache = deque(maxlen = size)
-    def lookup(self, nextValue):
-        if next in self.cache:
+        super().__init__(data, size)
+        self.cache = {}
+        self.lru_queue = deque(maxlen=size)
+
+    def lookup(self, address):
+        # case in cache
+        if address in self.cache:
             self.cache_hit_count += 1
-        #put this value in the first
-            if self.cache.index(nextValue) == 0:
-                return True
-            else:
-                self.cache.remove(nextValue)
-                self.cache.appendleft(nextValue)
-                return True
-        #case cache is full       
-        if len(self.cache) == self.cache.maxlen:
-            self.cache.pop()
-        #case not full and append it 
-        self.cache.appendleft(nextValue)
-        return False
+            value = self.cache[address]
+
+            # update LRU queue
+            self.lru_queue.remove(address)
+            self.lru_queue.append(address)
+
+            return value
+
+        # case not in cache
+        value = super().lookup(address)
+
+        # case cache is full
+        if len(self.cache) == self.lru_queue.maxlen:
+            least_recently_used_key = self.lru_queue.popleft()
+            del self.cache[least_recently_used_key]
+
+        # case not full, add to cache and update LRU queue
+        self.cache[address] = value
+        self.lru_queue.append(address)
+
+        return value
+    
+
 class RandomCache(AbstractCache):
     def name(self):
         return "Random"
 
-    # TODO: Edit the code below to provide an implementation of a cache that
-    # uses a random eviction strategy with the given cache size.
-    # You can use additional methods and variables as you see fit as
-    # long as you provide a suitable overridding of the lookup method.
-    # Make sure that you increment cache_hit_count when appropriate!
-    
     def __init__(self, data, size=5):
-        super().__init__(data,size)
-        self.cache = []*size
-    
-    def lookup(self,nextValue):
-        if nextValue in self.cache:
+        super().__init__(data, size)
+        self.cache = {}
+        self.cache_keys = [None] * size
+        self.cache_size = size
+
+    def lookup(self, address):
+        # case in cache
+        if address in self.cache:
             self.cache_hit_count += 1
-            return True
-        # check any space in cache is None
-        if None is self.cache:
-            self.cache[self.cache.index(None)] = nextValue
-        # if is not then find a random place and put the nextValue in
+            return self.cache[address]
+
+        # case not in cache
+        value = super().lookup(address)
+
+        # check if any space in cache is None
+        if None in self.cache_keys:
+            index = self.cache_keys.index(None)
+            self.cache_keys[index] = address
+            self.cache[address] = value
+        # if not, then find a random place and put the nextValue in
         else:
-            self.cache[random.randint(0,len(self.cache)-1)] = nextValue
+            evicted_key = random.choice(self.cache_keys)
+            del self.cache[evicted_key]
+
+            index = self.cache_keys.index(evicted_key)
+            self.cache_keys[index] = address
+            self.cache[address] = value
+
+        return value
