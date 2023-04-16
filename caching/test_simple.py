@@ -8,7 +8,7 @@ import unittest
 
 # Stop unittest printing traces out. Uncomment this line if you want
 # to see trace information
-__unittest = True
+#__unittest = True
 
 class BasicTestCase(unittest.TestCase):
 
